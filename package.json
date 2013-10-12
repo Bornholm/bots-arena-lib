@@ -1,0 +1,15 @@
+{
+  "name": "bots-arena-lib",
+  "version": "0.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "GPL",
+  "dependencies": {
+    "eventemitter2": "~0.4.13",
+    "node-uuid": "~1.4.1"
+  }
+}
