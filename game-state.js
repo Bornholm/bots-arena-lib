@@ -4,9 +4,9 @@ var EventEmitter2 = require('eventemitter2').EventEmitter2
 module.exports = GameState;
 
 function GameState() {
-  EventEmitter.call(this);
+  EventEmitter2.call(this);
 }
 
-util.inherits(GameState, EventEmitter);
+util.inherits(GameState, EventEmitter2);
 
 var p = GameState.prototype;

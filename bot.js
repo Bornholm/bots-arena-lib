@@ -7,7 +7,7 @@ module.exports = Bot;
 
 function Bot() {
 
-  EventEmitter.call(this);
+  EventEmitter2.call(this);
 
   // Private variables;
   var _gameState;
@@ -37,7 +37,7 @@ function Bot() {
 
 }
 
-util.inherits(Bot, EventEmitter);
+util.inherits(Bot, EventEmitter2);
 
 var p = Bot.prototype;
 
