@@ -2,38 +2,43 @@ var util = require('util');
 var EventEmitter2 = require('eventemitter2').EventEmitter2;
 var uuid = require('node-uuid');
 
-
 module.exports = Bot;
 
-function Bot() {
+function Bot(botID) {
 
   EventEmitter2.call(this);
 
   // Private variables;
-  var _gameState;
-  var _botID = uuid.v4();
+  var _arenaState;
+  var _botID = botID || uuid.v4();
 
   // Privileged methods
   this.getHealthPoints = function() {
-    return _gameState.getBotHP(_botID);
+    return _arenaState.getBotHP(_botID);
   };
 
-  this.setGameState = function(gameState) {
-    _gameState = gameState;
+  this.setArenaState = function(arenaState) {
+    if(!(arenaState instanceof ArenaState)) {
+      arenaState = new ArenaState(arenaState);
+    }
+    _arenaState = gameState;
   };
 
   this.getPosition = function() {
-    return _gameState.getBotPosition(_botID);
+    return _arenaState.getBotPosition(_botID);
   };
 
   this.getVisibleOpponents = function() {
-    var position = _gameState.getBotPosition(_botID);
-    var direction = _gameState.getBotDirection(_botID);
+    var position = _arenaState.getBotPosition(_botID);
+    var direction = _arenaState.getBotDirection(_botID);
     var visibleOpponents = [];
     // TODO
     return visibleOpponents;
   };
 
+  this.getID = function() {
+    return _botID;
+  };
 
 }
 

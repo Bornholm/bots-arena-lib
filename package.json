@@ -10,6 +10,8 @@
   "license": "GPL",
   "dependencies": {
     "eventemitter2": "~0.4.13",
-    "node-uuid": "~1.4.1"
+    "node-uuid": "~1.4.1",
+    "rpc-stream": "git://github.com/Bornholm/rpc-stream#develop",
+    "async": "~0.2.9"
   }
 }
