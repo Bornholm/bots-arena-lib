@@ -1,6 +1,7 @@
 var util = require('util');
 var EventEmitter2 = require('eventemitter2').EventEmitter2;
 var uuid = require('node-uuid');
+var Action = require('./action');
 
 module.exports = Bot;
 
@@ -11,21 +12,26 @@ function Bot(botID) {
   // Private variables;
   var _arenaState;
   var _botID = botID || uuid.v4();
+  var _actions = [];
 
   // Privileged methods
-  this.getHealthPoints = function() {
-    return _arenaState.getBotHP(_botID);
-  };
 
   this.setArenaState = function(arenaState) {
-    if(!(arenaState instanceof ArenaState)) {
-      arenaState = new ArenaState(arenaState);
-    }
-    _arenaState = gameState;
+    _arenaState = arenaState;
+  };
+
+  // Status accessors
+
+  this.getHP = function() {
+    return _arenaState.getBotHP(_botID);
   };
 
   this.getPosition = function() {
     return _arenaState.getBotPosition(_botID);
+  };
+
+  this.getDirection = function() {
+    return _arenaState.getBotDirection(_botID);
   };
 
   this.getVisibleOpponents = function() {
@@ -36,8 +42,16 @@ function Bot(botID) {
     return visibleOpponents;
   };
 
+  this.getCurrentTurn = function() {
+    return _arenaState.getCurrentTurn();
+  };
+
   this.getID = function() {
     return _botID;
+  };
+
+  this.getActions = function() {
+    return _actions;
   };
 
 }
@@ -46,10 +60,20 @@ util.inherits(Bot, EventEmitter2);
 
 var p = Bot.prototype;
 
-p.moveTo = function(position) {
-  // TODO
+// Actions
+
+p.moveTo = function(x, y) {
+  var action = new Action('moveTo', {x: y, y: y});
+  console.log(action);
+  this.emit('action.moveTo', action);
 };
 
-p.fireAt = function(position) {
- // TODO
+p.fireAt = function(x, y) {
+  var action = new Action('fireAt', {x: y, y: y});
+  this.emit('action.fireAt', action);
+};
+
+p.faceToward = function(x, y) {
+  var action = new Action('faceToward', {x: y, y: y});
+  this.emit('action.faceToward', action);
 };

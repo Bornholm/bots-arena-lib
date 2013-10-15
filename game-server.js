@@ -8,7 +8,7 @@ module.exports = GameServer;
 function GameServer() {
   EventEmitter2.call(this);
   this._streams = [];
-  this._arenas = [];
+  this._arenas = {};
   this._initServerApi();
 }
 
@@ -25,50 +25,56 @@ p.getNewRPCStream = function() {
 
 p._initServerApi = function() {
   this._api = {
-    join: this.join.bind(this),
-    leave: this.leave.bind(this),
-    getArenasList: this.getArenasList.bind(this)
+    join: unshiftArgs(this.join, this),
+    leave: unshiftArgs(this.leave, this),
+    getArenasList: unshiftArgs(this.getArenasList, this)
   };
 };
 
 p.findArenaByID = function(arenaID) {
-  var arenas = this._arenas;
-  var i, len, arena;
-  for(i = 0, len = arenas.length; i < len; ++i) {
-    arena = arenas[i];
-    if(arena.getID() === arenaID) {
-      return arena;
-    }
-  }
+  return this._arenas[arenaID];
 };
 
-p.join = function(botID, arenaID, done) {
-  var arena = this.findArenaByID(arenaID);
+p.join = function(gameServer, botID, arenaID, done) {
+  var rpcStream = this;
+  var arena = gameServer.findArenaByID(arenaID);
   if(arena) {
-    arena.addBot(botID);
+    arena.addBot(botID, rpcStream);
     return done();
   } else {
     return done(new Error('Invalid Arena ID !'));
   }
 };
 
-p.leave = function(botID, arenaID, done) {
+p.leave = function(gameServer, botID, arenaID, done) {
   // TODO
 };
 
-p.getArenasList = function(done) {
-  var arenas = this._arenas.map(function(a) {
-    return a.getID();
-  });
+p.getArenasList = function(gameServer, done) {
+  var arenas = Object.keys(gameServer._arenas);
   done(null, arenas);
 };
 
 p.openArena = function(arena) {
-  this._arenas.push(arena);
+  this._arenas[arena.getID()] = arena;
   arena.start();
   this.emit('arena.open', arena);
 };
 
 p.closeArena = function(arena) {
   //TODO
+};
+
+
+// Helpers
+
+var slice = Array.prototype.slice;
+
+function unshiftArgs(fn) {
+  var unshiftedArgs = slice.call(arguments, 1);
+  return function partial() {
+    var args = slice.call(arguments);
+    args.unshift.apply(args, unshiftedArgs);
+    fn.apply(this, args);
+  };
 };

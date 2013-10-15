@@ -4,16 +4,23 @@ var uuid = require('node-uuid');
 var TurnManager = require('./turn-manager');
 var Bot = require('./bot');
 var async = require('async');
+var _ = require('lodash');
+
+var slice = Array.prototype.slice;
 
 module.exports = Arena;
 
-function Arena() {
+Arena.State = ArenaState;
+
+function Arena(options) {
+
+  this._options = options || {};
 
   EventEmitter2.call(this);
 
-  this._bots = [];
+  this._bots = {};
   this._turnManager = new TurnManager();
-  this._keepRuning = false;
+  this._keepRunning = false;
 
   // Private
   var _arenaID = uuid.v4();
@@ -33,9 +40,17 @@ p.getArenaState = function() {
   return new ArenaState(this);
 };
 
-p.addBot = function(botID) {
-  var bot = new Bot(botID);
-  this._turnManager.addActor(botID);
+p.addBot = function(botID, rpc) {
+  var bot = this._bots[botID];
+  if(!bot) {
+    bot = {
+      data: this._getDefaultBotData(),
+      rpc: rpc
+    };
+    this._bots[botID] = bot;
+    this._turnManager.addActor(botID);
+    this._callHook('onBotAdd', botID, bot);
+  }
   return this;
 };
 
@@ -45,10 +60,10 @@ p.removeBot = function(botID) {
 
 p.start = function() {
   var arena = this;
-  arena._keepRuning = true;
+  arena._keepRunning = true;
   async.whilst(
     function() {
-      return arena._keepRuning;
+      return arena._keepRunning;
     },
     this._next.bind(this),
     function(err) {
@@ -58,35 +73,90 @@ p.start = function() {
 };
 
 p.pause = function() {
-  this._keepRuning = false;
+  this._keepRunning = false;
 };
 
 p.reset = function() {
-  
+  // TODO
 };
 
-p._next = function(cb) {
+p.validateAction = function(botID, action) {
+  // TODO
+  return true;
+};
+
+p.applyAction = function(botID, action) {
+  // TODO
+  return this;
+};
+
+p._callHook = function(hookId) {
+  var fn = this[hookId];
+  var args = slice.call(arguments, 1);
+  if(typeof fn === 'function') {
+    fn.apply(this, args);
+  }
+};
+
+p._getDefaultBotData = function() {
+  var data = {
+    hp: 50,
+    direction: {
+      x: 1,
+      y: 1
+    },
+    position: {
+      x: 0,
+      y: 0
+    }
+  };
+  this._callHook('onNewBotData', data);
+  return data;
+};
+
+p._next = function(done) {
+
+  var interval = this._options.interval || 5000;
 
   var turnManager = this._turnManager;
   var botID = turnManager.nextActor();
 
   if(botID) {
-    console.log('Bot playing:', botID);
+    this._callHook('onNextBot', botID);
     this._executeTurn(botID, function(err) {
       if(err) {
-        return cb(err);
+        return done(err);
       }
-      return setTimeout(cb, 5000);
+      return setTimeout(done, interval);
     });
   } else {
     turnManager.nextTurn();
-    console.log('New turn:', turnManager.getCurrentTurn());
-    return setTimeout(cb, 5000);
+    this._callHook('onNewTurn', turnManager.getCurrentTurn());
+    return setTimeout(done, interval);
   }
 };
 
-p._executeTurn = function(botID, cb) {
-  return cb();
+p._executeTurn = function(botID, done) {
+  var arena = this;
+  var bot = arena._bots[botID];
+  bot.rpc.call('executeBotTurn', arena.getArenaState(), function(err, actions) {
+    if(err) {
+      return done(err);
+    }
+    actions = actions || [];
+    var i, len, action;
+    arena._callHook('onBotActions', botID, actions);
+    for(i = 0, len = actions.length; i < len; ++i) {
+      action = actions[i];
+      if(arena.validateAction(botID, action)) {
+        arena.applyAction(botID, action);
+      } else {
+        return done(new Error('Invalid action !'));
+      }
+    }
+    return done();
+  });
+  return arena;
 };
 
 /* Arena State */
@@ -102,13 +172,43 @@ function ArenaState(arenaOrState) {
 p = ArenaState.prototype;
 
 p.snapshot = function(arena) {
-
+  this.bots = _.reduce(arena._bots, function(result, bot, botID) {
+    result[botID] = bot.data;
+    return result;
+  }, {});
+  this.currentTurn = arena._turnManager.getCurrentTurn();
 };
 
 p.fromRawData = function(raw) {
-
+  this.bots = raw.bots;
+  this.currentTurn = raw.currentTurn;
 };
 
-p.toJSON = function() {
+p.getBot = function(botID) {
+  return this.bots[botID];
+};
 
+p.getBotPosition = function(botID) {
+  var bot = this.getBot(botID);
+  if(bot) {
+    return _.clone(bot.position);
+  }
+};
+
+p.getBotDirection = function(botID) {
+  var bot = this.getBot(botID);
+  if(bot) {
+    return _.clone(bot.direction);
+  }
+};
+
+p.getCurrentTurn = function() {
+  return this.currentTurn;
+};
+
+p.getBotHP = function(botID) {
+  var bot = this.getBot(botID);
+  if(bot) {
+    return bot.hp;
+  }
 };
