@@ -48,27 +48,19 @@ p._initClientApi = function() {
   this.stream.expose(this._api);
 };
 
-function _stackAction(action) {
-  console.log(action);
-  this.push(action);
-}
-
 p._executeBotTurn = function(rawArenaState, done) {
   var bot = this._bot;
   var arenaState = new ArenaState(rawArenaState);
   bot.setArenaState(arenaState);
   var playerContext = this.getPlayerContext();
-  var actions = [];
-  var handler = _stackAction.bind(actions);
-  bot.on('action.*', handler);
   try {
+    bot.clearActions();
     if(typeof playerContext.onBotTurn === 'function') {
       playerContext.onBotTurn(bot);
     }
+    var actions = bot.getActions();
     done(null, actions);
   } catch(err) {
     return done(err);
-  } finally {
-    //bot.off('action.*', handler);
   }
 };

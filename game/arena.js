@@ -21,6 +21,11 @@ function Arena(options) {
   this._bots = {};
   this._turnManager = new TurnManager();
   this._keepRunning = false;
+  this._grid = {};
+  this._gridSize = {
+    columns: 10,
+    rows: 10
+  };
 
   // Private
   var _arenaID = uuid.v4();
@@ -177,6 +182,7 @@ p.snapshot = function(arena) {
     return result;
   }, {});
   this.currentTurn = arena._turnManager.getCurrentTurn();
+  this.gridSize = arena._gridSize;
 };
 
 p.fromRawData = function(raw) {

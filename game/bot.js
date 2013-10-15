@@ -50,8 +50,18 @@ function Bot(botID) {
     return _botID;
   };
 
+  this.addAction = function(action) {
+    _actions.push(action);
+    return this;
+  };
+
   this.getActions = function() {
     return _actions;
+  };
+
+  this.clearActions = function() {
+    _actions.length = 0;
+    return this;
   };
 
 }
@@ -64,16 +74,18 @@ var p = Bot.prototype;
 
 p.moveTo = function(x, y) {
   var action = new Action('moveTo', {x: y, y: y});
-  console.log(action);
-  this.emit('action.moveTo', action);
+  this.addAction(action);
+  return this;
 };
 
 p.fireAt = function(x, y) {
   var action = new Action('fireAt', {x: y, y: y});
-  this.emit('action.fireAt', action);
+  this.addAction(action);
+  return this;
 };
 
 p.faceToward = function(x, y) {
   var action = new Action('faceToward', {x: y, y: y});
-  this.emit('action.faceToward', action);
+  this.addAction(action);
+  return this;
 };
