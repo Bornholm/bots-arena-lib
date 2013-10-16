@@ -5,6 +5,7 @@ var TurnManager = require('./turn-manager');
 var Bot = require('./bot');
 var async = require('async');
 var _ = require('lodash');
+var Action = require('./action');
 
 var slice = Array.prototype.slice;
 
@@ -72,6 +73,7 @@ p.start = function() {
     },
     this._next.bind(this),
     function(err) {
+      //TODO
       console.log('whilst', arguments);
     }
   );
@@ -88,11 +90,6 @@ p.reset = function() {
 p.validateAction = function(botID, action) {
   // TODO
   return true;
-};
-
-p.applyAction = function(botID, action) {
-  // TODO
-  return this;
 };
 
 p._callHook = function(hookId) {
@@ -153,8 +150,9 @@ p._executeTurn = function(botID, done) {
     arena._callHook('onBotActions', botID, actions);
     for(i = 0, len = actions.length; i < len; ++i) {
       action = actions[i];
-      if(arena.validateAction(botID, action)) {
-        arena.applyAction(botID, action);
+      action.botID = botID;
+      if(arena.validateAction(action, arena)) {
+        Action.run(botID, action, arena);
       } else {
         return done(new Error('Invalid action !'));
       }
@@ -178,11 +176,11 @@ p = ArenaState.prototype;
 
 p.snapshot = function(arena) {
   this.bots = _.reduce(arena._bots, function(result, bot, botID) {
-    result[botID] = bot.data;
+    result[botID] = _.clone(bot.data);
     return result;
   }, {});
   this.currentTurn = arena._turnManager.getCurrentTurn();
-  this.gridSize = arena._gridSize;
+  this.gridSize = _.clone(arena._gridSize);
 };
 
 p.fromRawData = function(raw) {

@@ -1,3 +1,5 @@
+process.on('uncaughtError', console.error);
+
 var GameClient = require('../game-client');
 var GameServer = require('../game-server');
 var Arena = require('../game/arena');
@@ -14,6 +16,9 @@ var serverStream2 = server.getNewRPCStream();
 client1.stream.pipe(serverStream1).pipe(client1.stream);
 // client2 <-> server
 client2.stream.pipe(serverStream2).pipe(client2.stream);
+
+client1.stream.on('error', console.error);
+client2.stream.on('error', console.error);
 
 var arena = new Arena({
   interval: 1000
@@ -48,5 +53,6 @@ client1.join(arena.getID(), function(err) {
 client2.join(arena.getID(), function(err) {
   console.log('Client:', client2.getBot().getID(), 'joined arena !')
 });
+
 
 

@@ -73,19 +73,22 @@ var p = Bot.prototype;
 // Actions
 
 p.moveTo = function(x, y) {
-  var action = new Action('moveTo', {x: y, y: y});
+  var action = Action.create('moveTo');
+  action.setArgs(x, y);
   this.addAction(action);
   return this;
 };
 
 p.fireAt = function(x, y) {
-  var action = new Action('fireAt', {x: y, y: y});
+  var action = Action.create('fireAt');
+  action.setArgs(x, y);
   this.addAction(action);
   return this;
 };
 
 p.faceToward = function(x, y) {
-  var action = new Action('faceToward', {x: y, y: y});
+  var action = Action.create('faceToward');
+  action.setArgs(x, y);
   this.addAction(action);
   return this;
 };
