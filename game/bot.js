@@ -23,27 +23,47 @@ function Bot(botID) {
   // Status accessors
 
   this.getHP = function() {
-    return _arenaState.getBotHP(_botID);
+    if(_arenaState) {
+      return _arenaState.getBotHP(_botID);
+    } else {
+      return this.hp;
+    }
   };
 
   this.getPosition = function() {
-    return _arenaState.getBotPosition(_botID);
+    if(_arenaState) {
+      return _arenaState.getBotPosition(_botID);
+    } else {
+      return this.position;
+    }
   };
 
   this.getDirection = function() {
-    return _arenaState.getBotDirection(_botID);
+    if(_arenaState) {
+      _arenaState.getBotDirection(_botID);
+    } else {
+      return this.direction;
+    }
   };
 
   this.getVisibleOpponents = function() {
-    var position = _arenaState.getBotPosition(_botID);
-    var direction = _arenaState.getBotDirection(_botID);
     var visibleOpponents = [];
-    // TODO
+    if(_arenaState) {
+      var position = _arenaState.getBotPosition(_botID);
+      var direction = _arenaState.getBotDirection(_botID);
+      // TODO
+    } else {
+
+    }
     return visibleOpponents;
   };
 
   this.getCurrentTurn = function() {
-    return _arenaState.getCurrentTurn();
+    if(_arenaState) {
+      return _arenaState.getCurrentTurn();
+    } else {
+      throw new Error('Information unavailable in this mode !');
+    }
   };
 
   this.getID = function() {
@@ -69,6 +89,41 @@ function Bot(botID) {
 util.inherits(Bot, EventEmitter2);
 
 var p = Bot.prototype;
+
+p.toJSON = function() {
+  return {
+    hp: this.getHP(),
+    position: this.getPosition(),
+    direction: this.getDirection()
+  };
+};
+
+// "Server" side methods
+
+p.extend = function(data) {
+  for(var key in data) {
+    if(data.hasOwnProperty(key)) {
+      this[key] = data[key];
+    }
+  }
+};
+
+p.setHP = function(hp) {
+  this.hp = hp;
+  return this;
+};
+
+p.setPosition = function(x, y) {
+  this.position.x = x;
+  this.position.y = y;
+};
+
+p.setDirection = function(ew, ns) {
+  this.direction.ew = ew;
+  this.direction.ns = ns;
+};
+
+// "Client" side methods
 
 // Actions
 

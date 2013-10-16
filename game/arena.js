@@ -49,19 +49,53 @@ p.getArenaState = function() {
 p.addBot = function(botID, rpc) {
   var bot = this._bots[botID];
   if(!bot) {
-    bot = {
-      data: this._getDefaultBotData(),
-      rpc: rpc
-    };
+    bot = new Bot(botID);
+    bot.extend(this._getDefaultBotData());
+    bot.rpc = rpc;
     this._bots[botID] = bot;
-    this._turnManager.addActor(botID);
     this._callHook('onBotAdd', botID, bot);
+    this._turnManager.addActor(botID);
   }
   return this;
 };
 
 p.removeBot = function(botID) {
   // TODO
+};
+
+p.getBot = function(botID) {
+  return this._bots[botID];
+};
+
+p.getWidth = function() {
+  return this._gridSize.columns;
+};
+
+p.getHeight = function() {
+  return this._gridSize.rows;
+};
+
+p.isOccupied = function(x, y) {
+  var bots = this._bots;
+  var p;
+  for(botID in bots) {
+    if(bots.hasOwnProperty(botID)) {
+      p = bots[botID].getPosition();
+      if(p.x === x && y === p.y) {
+        return botID;
+      }
+    }
+  }
+};
+
+p.isWalkable = function(x, y) {
+  var gridSize = this._gridSize;
+  var isInsideBounds = 
+    x >= 0 && 
+    y >= 0 && 
+    y < gridSize.rows &&
+    x < gridSize.columns;
+  return isInsideBounds;
 };
 
 p.start = function() {
@@ -73,8 +107,11 @@ p.start = function() {
     },
     this._next.bind(this),
     function(err) {
+      if(err) {
+        return arena.emit('error', err);
+      }
       //TODO
-      console.log('whilst', arguments);
+      console.log('Arena stopped !');
     }
   );
 };
@@ -85,11 +122,6 @@ p.pause = function() {
 
 p.reset = function() {
   // TODO
-};
-
-p.validateAction = function(botID, action) {
-  // TODO
-  return true;
 };
 
 p._callHook = function(hookId) {
@@ -136,6 +168,7 @@ p._next = function(done) {
     this._callHook('onNewTurn', turnManager.getCurrentTurn());
     return setTimeout(done, interval);
   }
+
 };
 
 p._executeTurn = function(botID, done) {
@@ -146,15 +179,14 @@ p._executeTurn = function(botID, done) {
       return done(err);
     }
     actions = actions || [];
-    var i, len, action;
+    var i, len, action, correctlyExecuted;
     arena._callHook('onBotActions', botID, actions);
     for(i = 0, len = actions.length; i < len; ++i) {
-      action = actions[i];
-      action.botID = botID;
-      if(arena.validateAction(action, arena)) {
-        Action.run(botID, action, arena);
-      } else {
-        return done(new Error('Invalid action !'));
+      action = new Action(actions[i]);
+      correctlyExecuted = Action.execute(botID, action, arena);
+      if(!correctlyExecuted) {
+        // TODO send action error to player
+        return done();
       }
     }
     return done();
@@ -176,7 +208,7 @@ p = ArenaState.prototype;
 
 p.snapshot = function(arena) {
   this.bots = _.reduce(arena._bots, function(result, bot, botID) {
-    result[botID] = _.clone(bot.data);
+    result[botID] = bot.toJSON();
     return result;
   }, {});
   this.currentTurn = arena._turnManager.getCurrentTurn();
