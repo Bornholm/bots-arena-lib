@@ -1,4 +1,4 @@
-process.on('uncaughtError', console.error);
+process.on('uncaughtException', console.error);
 
 var GameClient = require('../game-client');
 var GameServer = require('../game-server');

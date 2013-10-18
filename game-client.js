@@ -41,9 +41,15 @@ p.getArenasList = function(done) {
   return this;
 };
 
+p._updateArenaState = function(rawArenaState) {
+  var arenaState = new ArenaState(rawArenaState);
+  this.emit('update', arenaState);
+};
+
 p._initClientApi = function() {
   this._api = {
-    executeBotTurn: this._executeBotTurn.bind(this)
+    executeBotTurn: this._executeBotTurn.bind(this),
+    updateArenaState: this._updateArenaState.bind(this)
   };
   this.stream.expose(this._api);
 };
@@ -56,7 +62,7 @@ p._executeBotTurn = function(rawArenaState, done) {
   try {
     bot.clearActions();
     if(typeof playerContext.onBotTurn === 'function') {
-      playerContext.onBotTurn(bot);
+      playerContext.onBotTurn(arenaState.getCurrentTurn(), bot);
     }
     var actions = bot.getActions();
     done(null, actions);

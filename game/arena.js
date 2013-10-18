@@ -20,12 +20,13 @@ function Arena(options) {
   EventEmitter2.call(this);
 
   this._bots = {};
+  this._rpcStreams = {};
   this._turnManager = new TurnManager();
   this._keepRunning = false;
   this._grid = {};
-  this._gridSize = {
-    columns: 10,
-    rows: 10
+  this._size = {
+    width: 10,
+    height: 10
   };
 
   // Private
@@ -42,17 +43,13 @@ util.inherits(Arena, EventEmitter2);
 
 var p = Arena.prototype;
 
-p.getArenaState = function() {
-  return new ArenaState(this);
-};
-
 p.addBot = function(botID, rpc) {
   var bot = this._bots[botID];
   if(!bot) {
     bot = new Bot(botID);
     bot.extend(this._getDefaultBotData());
-    bot.rpc = rpc;
     this._bots[botID] = bot;
+    this._rpcStreams[botID] = rpc;
     this._callHook('onBotAdd', botID, bot);
     this._turnManager.addActor(botID);
   }
@@ -63,40 +60,81 @@ p.removeBot = function(botID) {
   // TODO
 };
 
-p.getBot = function(botID) {
-  return this._bots[botID];
+p.getArenaState = function() {
+  return new ArenaState(this);
 };
 
-p.getWidth = function() {
-  return this._gridSize.columns;
+p.getRPCStream = function(botID) {
+  return this._rpcStreams[botID];
 };
 
-p.getHeight = function() {
-  return this._gridSize.rows;
-};
+/* Common methods */
 
-p.isOccupied = function(x, y) {
-  var bots = this._bots;
-  var p;
-  for(botID in bots) {
-    if(bots.hasOwnProperty(botID)) {
-      p = bots[botID].getPosition();
-      if(p.x === x && y === p.y) {
-        return botID;
+var commonMethods = {
+
+  getBot: function(botID) {
+    return this._bots[botID];
+  },
+
+  getBotDirection: function(botID) {
+    var bot = this.getBot(botID);
+    if(bot) {
+      return _.clone(bot._direction);
+    }
+  },
+
+  getBotPosition: function(botID) {
+    var bot = this.getBot(botID);
+    if(bot) {
+      return _.clone(bot._position);
+    }
+  },
+
+  getBotHP: function(botID) {
+    var bot = this.getBot(botID);
+    if(bot) {
+      return bot._hp;
+    }
+  },
+
+  getWidth: function() {
+    return this._size.width;
+  },
+
+  getHeight: function() {
+    return this._size.height;
+  },
+
+  getSize: function() {
+    return _.clone(this._size);
+  },
+
+  isOccupied: function(x, y) {
+    var bots = this._bots;
+    var p;
+    for(botID in bots) {
+      if(bots.hasOwnProperty(botID)) {
+        p = bots[botID].getPosition();
+        if(p.x === x && y === p.y) {
+          return botID;
+        }
       }
     }
+  },
+
+  isWalkable: function(x, y) {
+    var size = this.getSize();
+    var isInsideBounds = 
+      x >= 0 && 
+      y >= 0 && 
+      y < size.width &&
+      x < size.height;
+    return isInsideBounds;
   }
+
 };
 
-p.isWalkable = function(x, y) {
-  var gridSize = this._gridSize;
-  var isInsideBounds = 
-    x >= 0 && 
-    y >= 0 && 
-    y < gridSize.rows &&
-    x < gridSize.columns;
-  return isInsideBounds;
-};
+_.extend(p, commonMethods);
 
 p.start = function() {
   var arena = this;
@@ -134,12 +172,12 @@ p._callHook = function(hookId) {
 
 p._getDefaultBotData = function() {
   var data = {
-    hp: 50,
-    direction: {
+    _hp: 50,
+    _direction: {
       x: 1,
       y: 1
     },
-    position: {
+    _position: {
       x: 0,
       y: 0
     }
@@ -148,24 +186,34 @@ p._getDefaultBotData = function() {
   return data;
 };
 
+p.broadcastUpdate = function() {
+  var arena = this;
+  var rpcIDs = Object.keys(this._rpcStreams);
+  rpcIDs.forEach(function(rpcID) {
+    var rpc = arena.getRPCStream(rpcID);
+    rpc.call('updateArenaState', arena.getArenaState());
+  });
+};
+
 p._next = function(done) {
 
   var interval = this._options.interval || 5000;
-
+  var arena = this;
   var turnManager = this._turnManager;
   var botID = turnManager.nextActor();
 
   if(botID) {
     this._callHook('onNextBot', botID);
-    this._executeTurn(botID, function(err) {
+    arena._executeTurn(botID, function(err) {
       if(err) {
         return done(err);
       }
+      arena.broadcastUpdate();
       return setTimeout(done, interval);
     });
   } else {
     turnManager.nextTurn();
-    this._callHook('onNewTurn', turnManager.getCurrentTurn());
+    arena._callHook('onNewTurn', turnManager.getCurrentTurn());
     return setTimeout(done, interval);
   }
 
@@ -173,8 +221,8 @@ p._next = function(done) {
 
 p._executeTurn = function(botID, done) {
   var arena = this;
-  var bot = arena._bots[botID];
-  bot.rpc.call('executeBotTurn', arena.getArenaState(), function(err, actions) {
+  var rpc = arena.getRPCStream(botID);
+  rpc.call('executeBotTurn', arena.getArenaState(), function(err, actions) {
     if(err) {
       return done(err);
     }
@@ -207,44 +255,26 @@ function ArenaState(arenaOrState) {
 p = ArenaState.prototype;
 
 p.snapshot = function(arena) {
-  this.bots = _.reduce(arena._bots, function(result, bot, botID) {
-    result[botID] = bot.toJSON();
-    return result;
-  }, {});
-  this.currentTurn = arena._turnManager.getCurrentTurn();
-  this.gridSize = _.clone(arena._gridSize);
+  this._bots = _.clone(arena._bots);
+  this._currentTurn = arena._turnManager.getCurrentTurn();
+  this._size = arena.getSize();
 };
 
 p.fromRawData = function(raw) {
-  this.bots = raw.bots;
-  this.currentTurn = raw.currentTurn;
+  this._bots = _.reduce(raw._bots, function(bots, rawBot, botID) {
+    var bot = bots[botID] = new Bot(botID);
+    bot.extend(rawBot);
+    return bots;
+  }, {});
+  this._currentTurn = raw._currentTurn;
+  this._size = raw._size;
 };
 
-p.getBot = function(botID) {
-  return this.bots[botID];
-};
-
-p.getBotPosition = function(botID) {
-  var bot = this.getBot(botID);
-  if(bot) {
-    return _.clone(bot.position);
-  }
-};
-
-p.getBotDirection = function(botID) {
-  var bot = this.getBot(botID);
-  if(bot) {
-    return _.clone(bot.direction);
-  }
-};
+_.extend(p, commonMethods);
 
 p.getCurrentTurn = function() {
-  return this.currentTurn;
+  return this._currentTurn;
 };
 
-p.getBotHP = function(botID) {
-  var bot = this.getBot(botID);
-  if(bot) {
-    return bot.hp;
-  }
-};
+
+

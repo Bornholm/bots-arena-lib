@@ -26,7 +26,7 @@ function Bot(botID) {
     if(_arenaState) {
       return _arenaState.getBotHP(_botID);
     } else {
-      return this.hp;
+      return this._hp;
     }
   };
 
@@ -34,7 +34,7 @@ function Bot(botID) {
     if(_arenaState) {
       return _arenaState.getBotPosition(_botID);
     } else {
-      return this.position;
+      return this._position;
     }
   };
 
@@ -42,7 +42,7 @@ function Bot(botID) {
     if(_arenaState) {
       _arenaState.getBotDirection(_botID);
     } else {
-      return this.direction;
+      return this._direction;
     }
   };
 
@@ -56,14 +56,6 @@ function Bot(botID) {
 
     }
     return visibleOpponents;
-  };
-
-  this.getCurrentTurn = function() {
-    if(_arenaState) {
-      return _arenaState.getCurrentTurn();
-    } else {
-      throw new Error('Information unavailable in this mode !');
-    }
   };
 
   this.getID = function() {
@@ -92,9 +84,9 @@ var p = Bot.prototype;
 
 p.toJSON = function() {
   return {
-    hp: this.getHP(),
-    position: this.getPosition(),
-    direction: this.getDirection()
+    _hp: this.getHP(),
+    _position: this.getPosition(),
+    _direction: this.getDirection()
   };
 };
 
@@ -109,18 +101,18 @@ p.extend = function(data) {
 };
 
 p.setHP = function(hp) {
-  this.hp = hp;
+  this._hp = hp;
   return this;
 };
 
 p.setPosition = function(x, y) {
-  this.position.x = x;
-  this.position.y = y;
+  this._position.x = x;
+  this._position.y = y;
 };
 
 p.setDirection = function(ew, ns) {
-  this.direction.ew = ew;
-  this.direction.ns = ns;
+  this._direction.ew = ew;
+  this._direction.ns = ns;
 };
 
 // "Client" side methods
